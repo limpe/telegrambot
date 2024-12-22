@@ -1,62 +1,80 @@
-// index.js
 require('dotenv').config();
 const { Telegraf } = require('telegraf');
-const MistralClient = require('mistralai');
+const { MistralClient } = require('@mistralai/mistralai');
 
 // Inisialisasi bot
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// Inisialisasi Mistral AI client
+// Inisialisasi Mistral AI client dengan versi yang benar
 const mistral = new MistralClient(process.env.MISTRAL_API_KEY);
 
-// Perintah /start untuk memulai bot
-bot.command('start', async (ctx) => {
-    await ctx.reply('Bot aktif! Gunakan perintah /test untuk mengecek koneksi ke Mistral.ai');
+// Fungsi untuk memeriksa konfigurasi
+async function checkConfiguration(ctx) {
+    let configStatus = '🔍 Pemeriksaan Konfigurasi:\n\n';
+    
+    // Periksa Telegram Token
+    configStatus += `Telegram Token: ${process.env.BOT_TOKEN ? '✅ Terdeteksi' : '❌ Tidak ditemukan'}\n`;
+    configStatus += `Mistral API Key: ${process.env.MISTRAL_API_KEY ? '✅ Terdeteksi' : '❌ Tidak ditemukan'}\n`;
+    
+    await ctx.reply(configStatus);
+}
+
+// Perintah /debug untuk memeriksa konfigurasi
+bot.command('debug', async (ctx) => {
+    await checkConfiguration(ctx);
 });
 
-// Perintah /test untuk mengecek koneksi Mistral
+// Perintah /test yang lebih informatif
 bot.command('test', async (ctx) => {
     try {
-        // Kirim pesan bahwa tes sedang berjalan
-        await ctx.reply('Mengecek koneksi ke Mistral.ai...');
+        await ctx.reply('🚀 Memulai tes koneksi ke Mistral.ai...');
         
-        // Coba melakukan request sederhana ke Mistral
+        // Log untuk debugging
+        console.log('Mencoba koneksi ke Mistral dengan API key:', 
+            process.env.MISTRAL_API_KEY ? 'Ada (beberapa karakter terakhir: ' + 
+            process.env.MISTRAL_API_KEY.slice(-4) + ')' : 'Tidak ada');
+        
         const response = await mistral.chat({
-            messages: [{ role: 'user', content: 'Tolong balas dengan: "Koneksi ke Mistral.ai berhasil!"' }],
-            model: 'mistral-tiny'
+            model: "mistral-tiny",
+            messages: [{ role: "user", content: "Berikan respons pendek: Halo!" }],
         });
         
-        // Kirim hasil tes
-        await ctx.reply('✅ Hasil tes:\n\n' + response.choices[0].message.content);
-        await ctx.reply('Bot siap digunakan! Anda bisa mengirim pesan apa saja untuk dicoba.');
+        console.log('Respon dari Mistral:', response);
+        
+        await ctx.reply('✅ Koneksi berhasil!\nRespon Mistral: ' + response.choices[0].message.content);
         
     } catch (error) {
-        console.error('Error saat tes Mistral:', error);
+        console.error('Error lengkap:', error);
         
-        // Kirim pesan error yang informatif
-        let errorMessage = '❌ Gagal terhubung ke Mistral.ai\n\nDetail error:';
+        let errorMessage = '❌ Error terdeteksi:\n\n';
         
-        if (error.response) {
-            errorMessage += `\nStatus: ${error.response.status}`;
-            errorMessage += `\nPesan: ${error.response.data?.error || error.message}`;
+        if (error.name === 'TypeError' && error.message.includes('mistral.chat')) {
+            errorMessage += '- Sepertinya ada masalah dengan instalasi package Mistral\n';
+            errorMessage += '- Pastikan package.json mencantumkan: "@mistralai/mistralai": "latest"\n';
+        } else if (error.response) {
+            errorMessage += `- Status: ${error.response.status}\n`;
+            errorMessage += `- Detail: ${JSON.stringify(error.response.data)}\n`;
         } else {
-            errorMessage += `\nPesan: ${error.message}`;
+            errorMessage += `- Error: ${error.message}\n`;
         }
         
         await ctx.reply(errorMessage);
-        await ctx.reply('Mohon periksa:\n1. API key Mistral sudah benar\n2. Variable MISTRAL_API_KEY sudah diset di Railway');
     }
 });
 
-// Handler untuk pesan biasa
+// Handler pesan biasa dengan logging
 bot.on('message', async (ctx) => {
     if (!ctx.message.text) return;
     
     try {
+        console.log('Menerima pesan:', ctx.message.text);
+        
         const response = await mistral.chat({
-            messages: [{ role: 'user', content: ctx.message.text }],
-            model: 'mistral-tiny'
+            model: "mistral-tiny",
+            messages: [{ role: "user", content: ctx.message.text }],
         });
+        
+        console.log('Respon Mistral:', response.choices[0].message.content);
         
         await ctx.reply(response.choices[0].message.content);
     } catch (error) {
