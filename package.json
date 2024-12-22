@@ -4,11 +4,18 @@
   "description": "A Telegram bot powered by Railway",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "install-prod": "npm install --omit=dev"
   },
   "dependencies": {
     "@mistralai/mistralai": "latest",
     "telegraf": "^4.12.2",
     "dotenv": "^16.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
