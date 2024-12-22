@@ -9,7 +9,7 @@ async function chatWithMistral(message) {
     try {
         const response = await axios.post('https://chat.mistral.ai/chat?model=ag:30fef39f:20241222:mistral-large-2-1:127fdd78', {
             messages: [{ role: 'user', content: message }],
-            model: 'mistral-tiny'  // Model gratis dari Mistral
+            model: 'mistral large 2.1'  // Model gratis dari Mistral
         }, {
             headers: {
                 'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`,
