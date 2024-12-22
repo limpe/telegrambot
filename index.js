@@ -5,76 +5,43 @@ const { MistralClient } = require('@mistralai/mistralai');
 // Inisialisasi bot
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// Inisialisasi Mistral AI client dengan versi yang benar
+// Inisialisasi Mistral AI client
 const mistral = new MistralClient(process.env.MISTRAL_API_KEY);
 
-// Fungsi untuk memeriksa konfigurasi
-async function checkConfiguration(ctx) {
-    let configStatus = '🔍 Pemeriksaan Konfigurasi:\n\n';
-    
-    // Periksa Telegram Token
-    configStatus += `Telegram Token: ${process.env.BOT_TOKEN ? '✅ Terdeteksi' : '❌ Tidak ditemukan'}\n`;
-    configStatus += `Mistral API Key: ${process.env.MISTRAL_API_KEY ? '✅ Terdeteksi' : '❌ Tidak ditemukan'}\n`;
-    
-    await ctx.reply(configStatus);
+// Tambahkan penanganan shutdown yang baik
+function setupGracefulShutdown(bot) {
+    // Tangani sinyal terminasi
+    process.once('SIGINT', () => bot.stop('SIGINT'));
+    process.once('SIGTERM', () => bot.stop('SIGTERM'));
 }
 
-// Perintah /debug untuk memeriksa konfigurasi
-bot.command('debug', async (ctx) => {
-    await checkConfiguration(ctx);
-});
+// Handler pesan dan commands
+bot.command('start', ctx => ctx.reply('Bot telah aktif! Gunakan /test untuk mengecek koneksi.'));
 
-// Perintah /test yang lebih informatif
 bot.command('test', async (ctx) => {
     try {
-        await ctx.reply('🚀 Memulai tes koneksi ke Mistral.ai...');
-        
-        // Log untuk debugging
-        console.log('Mencoba koneksi ke Mistral dengan API key:', 
-            process.env.MISTRAL_API_KEY ? 'Ada (beberapa karakter terakhir: ' + 
-            process.env.MISTRAL_API_KEY.slice(-4) + ')' : 'Tidak ada');
+        await ctx.reply('🔄 Mengecek koneksi ke Mistral.ai...');
         
         const response = await mistral.chat({
             model: "mistral-tiny",
-            messages: [{ role: "user", content: "Berikan respons pendek: Halo!" }],
+            messages: [{ role: "user", content: "Berikan respons singkat: Koneksi berhasil!" }],
         });
         
-        console.log('Respon dari Mistral:', response);
-        
-        await ctx.reply('✅ Koneksi berhasil!\nRespon Mistral: ' + response.choices[0].message.content);
-        
+        await ctx.reply('✅ ' + response.choices[0].message.content);
     } catch (error) {
-        console.error('Error lengkap:', error);
-        
-        let errorMessage = '❌ Error terdeteksi:\n\n';
-        
-        if (error.name === 'TypeError' && error.message.includes('mistral.chat')) {
-            errorMessage += '- Sepertinya ada masalah dengan instalasi package Mistral\n';
-            errorMessage += '- Pastikan package.json mencantumkan: "@mistralai/mistralai": "latest"\n';
-        } else if (error.response) {
-            errorMessage += `- Status: ${error.response.status}\n`;
-            errorMessage += `- Detail: ${JSON.stringify(error.response.data)}\n`;
-        } else {
-            errorMessage += `- Error: ${error.message}\n`;
-        }
-        
-        await ctx.reply(errorMessage);
+        console.error('Error saat tes:', error);
+        await ctx.reply('❌ Gagal terhubung ke Mistral.ai: ' + error.message);
     }
 });
 
-// Handler pesan biasa dengan logging
 bot.on('message', async (ctx) => {
     if (!ctx.message.text) return;
     
     try {
-        console.log('Menerima pesan:', ctx.message.text);
-        
         const response = await mistral.chat({
             model: "mistral-tiny",
             messages: [{ role: "user", content: ctx.message.text }],
         });
-        
-        console.log('Respon Mistral:', response.choices[0].message.content);
         
         await ctx.reply(response.choices[0].message.content);
     } catch (error) {
@@ -83,5 +50,14 @@ bot.on('message', async (ctx) => {
     }
 });
 
-// Jalankan bot
-bot.launch();
+// Jalankan bot dengan opsi khusus untuk mencegah konflik
+bot.launch({
+    dropPendingUpdates: true,
+    allowedUpdates: ['message', 'callback_query']
+}).then(() => {
+    console.log('Bot telah dimulai');
+    setupGracefulShutdown(bot);
+}).catch((err) => {
+    console.error('Error saat menjalankan bot:', err);
+    process.exit(1);
+});
