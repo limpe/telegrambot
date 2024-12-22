@@ -1,0 +1,13 @@
+{
+  "name": "telegrambot",
+  "version": "1.0.0",
+  "description": "A Telegram bot powered by Railway",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "telegraf": "^4.12.2",
+    "dotenv": "^16.0.3"
+  }
+}
