@@ -1,7 +1,7 @@
 {
   "name": "telegram-mistral-bot",
   "version": "1.0.0",
-  "description": "Telegram bot with Mistral.ai integration",
+  "description": "Bot Telegram sederhana dengan integrasi Mistral AI",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -9,7 +9,6 @@
   "dependencies": {
     "@mistralai/mistralai": "latest",
     "telegraf": "^4.12.2",
-    "express": "^4.18.2",
     "dotenv": "^16.0.3"
   },
   "engines": {
