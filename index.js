@@ -1,95 +1,94 @@
+// index.js
 require('dotenv').config();
 const { Telegraf } = require('telegraf');
-const express = require('express');
 const { MistralClient } = require('@mistralai/mistralai');
 
-// Inisialisasi express app
-const app = express();
-app.use(express.json());
-
-// Inisialisasi bot dan mistral client
+// Inisialisasi bot Telegram
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+
+// Inisialisasi client Mistral AI
 const mistral = new MistralClient(process.env.MISTRAL_API_KEY);
 
-// Middleware untuk parsing update dari Telegram
-app.use(bot.webhookCallback('/webhook'));
-
-// Set webhook path
-const PORT = process.env.PORT || 3000;
-const WEBHOOK_URL = process.env.RAILWAY_STATIC_URL + '/webhook';
-
-// Perintah bot
+// Menangani perintah /start
 bot.command('start', async (ctx) => {
-    console.log('Menerima perintah start');
-    await ctx.reply('Bot telah aktif! Gunakan /test untuk mengecek koneksi.');
-});
-
-bot.command('test', async (ctx) => {
     try {
-        console.log('Menjalankan tes koneksi Mistral');
-        await ctx.reply('🔄 Mengecek koneksi ke Mistral.ai...');
-        
-        const response = await mistral.chat({
-            model: "mistral-tiny",
-            messages: [{ role: "user", content: "Berikan respons singkat: Koneksi berhasil!" }],
-        });
-        
-        console.log('Respon Mistral diterima:', response.choices[0].message.content);
-        await ctx.reply('✅ ' + response.choices[0].message.content);
+        await ctx.reply('👋 Halo! Saya adalah bot yang menggunakan Mistral AI.\n\nGunakan perintah /help untuk melihat apa yang bisa saya lakukan.');
     } catch (error) {
-        console.error('Error saat tes:', error);
-        await ctx.reply('❌ Gagal terhubung ke Mistral.ai: ' + error.message);
+        console.error('Error pada command start:', error);
     }
 });
 
+// Menangani perintah /help
+bot.command('help', async (ctx) => {
+    try {
+        const helpText = `Berikut adalah perintah yang tersedia:
+
+/start - Memulai bot
+/help - Menampilkan bantuan
+/test - Mengecek koneksi ke Mistral AI
+
+Anda juga bisa langsung mengirim pesan untuk berbicara dengan AI!`;
+        
+        await ctx.reply(helpText);
+    } catch (error) {
+        console.error('Error pada command help:', error);
+    }
+});
+
+// Menangani perintah /test
+bot.command('test', async (ctx) => {
+    try {
+        await ctx.reply('🔄 Mengecek koneksi ke Mistral AI...');
+        
+        const response = await mistral.chat({
+            model: "mistral-tiny",
+            messages: [
+                { role: "user", content: "Tolong berikan respons singkat untuk mengkonfirmasi bahwa koneksi berhasil." }
+            ]
+        });
+        
+        await ctx.reply('✅ Koneksi berhasil!\n\nRespons dari AI: ' + response.choices[0].message.content);
+    } catch (error) {
+        console.error('Error pada command test:', error);
+        await ctx.reply('❌ Gagal terhubung ke Mistral AI. Error: ' + error.message);
+    }
+});
+
+// Menangani pesan biasa
 bot.on('message', async (ctx) => {
     if (!ctx.message.text) return;
     
     try {
-        console.log('Menerima pesan:', ctx.message.text);
+        const userMessage = ctx.message.text;
+        console.log('Menerima pesan:', userMessage);
+        
         const response = await mistral.chat({
             model: "mistral-tiny",
-            messages: [{ role: "user", content: ctx.message.text }],
+            messages: [{ role: "user", content: userMessage }]
         });
         
-        console.log('Mengirim balasan');
         await ctx.reply(response.choices[0].message.content);
     } catch (error) {
-        console.error('Error:', error);
-        await ctx.reply('Maaf, ada kesalahan dalam memproses pesan Anda.');
+        console.error('Error saat memproses pesan:', error);
+        await ctx.reply('Maaf, terjadi kesalahan saat memproses pesan Anda.');
     }
 });
 
-// Setup webhook dan mulai server
-async function startServer() {
-    try {
-        // Hapus webhook yang ada
-        await bot.telegram.deleteWebhook();
-        
-        // Set webhook baru
-        await bot.telegram.setWebhook(WEBHOOK_URL);
-        console.log('Webhook diatur ke:', WEBHOOK_URL);
-        
-        // Mulai server
-        app.listen(PORT, () => {
-            console.log(`Server berjalan di port ${PORT}`);
-        });
-    } catch (error) {
-        console.error('Error saat memulai server:', error);
-        process.exit(1);
-    }
-}
-
-// Handle shutdown dengan baik
-process.once('SIGINT', () => {
-    bot.telegram.deleteWebhook();
-    process.exit(0);
+// Menangani error secara global
+bot.catch((err, ctx) => {
+    console.error('Error bot secara global:', err);
+    ctx.reply('Terjadi kesalahan dalam bot. Mohon coba lagi nanti.');
 });
 
-process.once('SIGTERM', () => {
-    bot.telegram.deleteWebhook();
-    process.exit(0);
-});
+// Memulai bot
+bot.launch()
+    .then(() => {
+        console.log('Bot telah dimulai dan siap menerima pesan!');
+    })
+    .catch(err => {
+        console.error('Error saat memulai bot:', err);
+    });
 
-// Mulai server
-startServer();
+// Menangani graceful shutdown
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));
