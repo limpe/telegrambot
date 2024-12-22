@@ -4,7 +4,7 @@ const { Telegraf } = require('telegraf');
 const MistralClient = require('mistralai');
 
 // Inisialisasi bot
-const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+const bot = new Telegraf(process.env.BOT_TOKEN);
 
 // Inisialisasi Mistral AI client
 const mistral = new MistralClient(process.env.MISTRAL_API_KEY);
