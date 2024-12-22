@@ -7,7 +7,7 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 // Fungsi untuk berkomunikasi dengan Mistral API
 async function chatWithMistral(message) {
     try {
-        const response = await axios.post('https://api.mistral.ai/v1/chat/completions', {
+        const response = await axios.post('https://chat.mistral.ai/chat?model=ag:30fef39f:20241222:mistral-large-2-1:127fdd78', {
             messages: [{ role: 'user', content: message }],
             model: 'mistral-tiny'  // Model gratis dari Mistral
         }, {
